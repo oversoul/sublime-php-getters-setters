@@ -231,7 +231,7 @@ class Parser(object):
     def __init__(self, content):
         self.content = content
         self.functionRegExp = ".*function.*%s\("
-        self.variableRegExp = '((?:private|public|protected)[ ]{0,}(?:final|static)?[ ]{0,}(?:\$.*?)[ |=|;].*)\n'
+        self.variableRegExp = '((?:private|public|protected)[ ]{0,}(?:final|static)?[ ]{0,}(?:[?]?\w+)?[ ]{0,}(?:\$.*?)[ |=|;].*)\n'
 
     def getContent(self):
         return self.content
@@ -310,6 +310,10 @@ class Parser(object):
             typeName = docblock.getTag('var')
         description = docblock.getDescription()
 
+        typeRegex = re.findall('(?:private|public|protected)[ ]{0,}(?:final|static)?[ ]{0,}([?]?\w+)?[ ]{0,}(?:\$.*?)[ |=|;].*', line)
+        print("hello", typeRegex)
+        if len(typeRegex) > 0:
+            typeName = typeRegex[0]
         return Variable(name = name, visibility = visibility, typeName = typeName, description = description)
 
     def getClassVariables(self):
@@ -320,6 +324,7 @@ class Parser(object):
         variablesList = []
 
         matches = re.findall(self.variableRegExp, content,  re.IGNORECASE)
+
         for match in matches:
             variable = self._processVariable(match)
             variablesList.append(variable)
@@ -525,6 +530,27 @@ class PhpGenerateGettersSetterUnavailable(Base):
     def description(self):
         return "Only available for PHP syntax buffers"
 
+class TypedClean(object):
+  name = "TypedClean"
+  style = 'camelCase'
+
+  getter = """
+    public function %(getterPrefix)s%(normalizedName)s(): %(type)s
+    {
+        return $this->%(name)s;
+    }
+"""
+
+  setter = """
+    public function %(setterPrefix)s%(normalizedName)s(%(type)s $%(name)s)
+    {
+        $this->%(name)s = $%(name)s;
+        return $this;
+    }
+"""
+
+
+
 class PSR2(object):
   name = "PSR2"
   style = 'camelCase'
@@ -659,6 +685,7 @@ TemplateManager = TemplateManager()
 def plugin_loaded():
     TemplateManager.register(PSR2())
     TemplateManager.register(camelCase())
+    TemplateManager.register(TypedClean())
     TemplateManager.register(camelCaseFluent())
     TemplateManager.register(snakeCase())
     TemplateManager.register(snakeCaseFluent())
